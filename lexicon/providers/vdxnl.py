@@ -53,8 +53,8 @@ class Provider(BaseProvider):
         login_response = self.session.post(
             "https://accounts.vdx.nl/login?service=aHR0cHM6Ly9taWpuLnZkeC5ubC9sb2dpbj9mcm9tPWFjY291bnRz",
             data={
-                "username": self.options.get('auth_username',''),
-                "password": self.options.get('auth_password',''),
+                "username": self.options['auth_username'],
+                "password": self.options['auth_password'],
                 "action": "login",
                 "service": "https://mijn.vdx.nl/login"
             }
@@ -64,6 +64,9 @@ class Provider(BaseProvider):
         html = BeautifulSoup(login_response.content, "html.parser")
         if html.find("a", {"target": "_parent"}) is not None:
             sso_response = self.session.get(html.find("a", {"target": "_parent"})["href"])
+        else:
+            logger.warning("VDX.nl login failed, check username and password")
+            return False
 
         # Make an authenticated GET to the DNS management page
         zones_response = self.session.get("https://mijn.vdx.nl/accounts")
@@ -73,7 +76,7 @@ class Provider(BaseProvider):
         zone = html.find_all("a", string=self.options.get("domain",''))
 
         # If the tag couldn't be found, error, otherwise, return the value of the tag
-        if zone is None:
+        if zone is None or len(zone) == 0:
             logger.warning("Domain {0} not found in account".format(self.options.get("domain",'')))
             raise AssertionError("Domain {0} not found in account".format(self.options.get("domain",'')))
 
